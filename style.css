@@ -1,0 +1,40 @@
+body, html {
+  padding: 0px;
+  margin: 0px;
+  min-height:100vh;
+}
+
+body {
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+pre {
+  min-width:100vw;
+  margin: 0px;
+}
+
+pre[data-state=awaiting] {
+  min-height:100vh;
+  display:grid;
+  justify-content:center;
+  align-items:center;
+}
+
+pre[data-state=loaded] {
+  margin:5em;
+  display:grid;
+  grid-template-columns: repeat(8,2em) 3em repeat(7,2em);
+  grid-auto-rows:20px;
+  justify-content:center;
+  align-items:center;
+}
+
+pre[data-state=loaded] > span {
+  text-align:right;
+}
+
+.byte {
+  padding:5px;
+}
