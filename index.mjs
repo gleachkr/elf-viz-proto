@@ -1,5 +1,5 @@
 import { html } from 'https://unpkg.com/htm/preact/index.module.js?module'
-import { render, Component, Fragment } from 'https://unpkg.com/preact@latest?module'
+import { render, Component, createRef } from 'https://unpkg.com/preact@latest?module'
 import Outlines from './components/hull.mjs'
 
 class App extends Component {
@@ -8,6 +8,7 @@ class App extends Component {
     super()
     this.windowMin = 0
     this.windowMax = 5
+    this.data = createRef()
   }
 
   componentDidMount() {
@@ -38,13 +39,14 @@ class App extends Component {
       this.windowMin += 2
       this.windowMax += 2
       const data = document.getElementById("data")
-      this.renderView(data.lastChild)
+      this.renderView(data.querySelector("span:last-of-type"))
     }
     if (window.scrollY < window.innerHeight && this.windowMin > 0) {
       this.windowMin -= 2
       this.windowMax -= 2
       const data = document.getElementById("data")
-      this.renderView(data.firstChild)
+      console.log(data.querySelector("span:first-of-type"))
+      this.renderView(data.querySelector("span:first-of-type"))
     }
   }
 
@@ -55,17 +57,31 @@ class App extends Component {
     // TODO: but this window ought to move around as we scroll
     for (let i = this.windowMin * 1024; i < Math.min(this.view.byteLength, this.windowMax * 1024); i++) {
       bytes.push(html`<span 
-        key=${i} 
+        key=${i}
+        id=${i.toString(16)}
         class="byte">${this.view.getUint8(i).toString(16).padStart(2, '0')}</span>`)
     }
-    this.setState({bytes}, () => oldOffset && window.scroll(0,window.scrollY + (anchor.offsetTop - oldOffset)))
+    this.setState({bytes}, () => {
+      if (anchor) {
+        console.log("scrollby:", anchor.offsetTop - oldOffset)
+        console.log("scrollY:", window.scrollY)
+      }
+      if (oldOffset !== undefined) window.scroll(0, window.scrollY + (anchor.offsetTop - oldOffset))
+    })
   }
 
   render(props, state) {
-    if (state.bytes) {
+    if (state.bytes && this.data.current) {
       return html`<div data-state="loaded">
-          <${Outlines}></>
-          <pre id="data">${state.bytes}</pre>
+          <pre ref=${this.data} id="data">
+          ${state.bytes}
+          <${Outlines} containerElt=${this.data.current}/>
+          </pre>
+        </div>`
+    } else if (state.bytes) {
+      setTimeout(() => this.forceUpdate(), 100)
+      return html`<div data-state="loaded">
+          <pre ref=${this.data} id="data">${state.bytes}</pre>
         </div>`
     } else {
       return html`<div data-state="awaiting"
