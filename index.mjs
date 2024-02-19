@@ -1,6 +1,7 @@
 import { html } from 'https://unpkg.com/htm/preact/index.module.js?module'
 import { render, Component, createRef } from 'https://unpkg.com/preact@latest?module'
 import Outlines from './components/hull.mjs'
+import { makeElfData } from './util/elfdata.mjs'
 
 class App extends Component {
 
@@ -21,6 +22,7 @@ class App extends Component {
     const file = ev.dataTransfer.files[0]
     this.buffer = await file.arrayBuffer()
     this.view = new DataView(this.buffer)
+    this.elfData = makeElfData(this.view)
     this.renderView()
   }
 
@@ -36,29 +38,33 @@ class App extends Component {
 
   onScroll() {
     if (document.body.clientHeight - window.scrollY < window.innerHeight * 2) {
+      const data = document.getElementById("data")
+      const anchor = data.querySelector("span:last-of-type")
+      if (anchor.dataset.boundary == "last") return
       this.windowMin += 2
       this.windowMax += 2
-      const data = document.getElementById("data")
-      this.renderView(data.querySelector("span:last-of-type"))
+      this.renderView(anchor)
     }
-    if (window.scrollY < window.innerHeight && this.windowMin > 0) {
+    if (window.scrollY < window.innerHeight) {
+      const data = document.getElementById("data")
+      const anchor = data.querySelector("span:first-of-type")
+      if (anchor.dataset.boundary == "first") return
       this.windowMin -= 2
       this.windowMax -= 2
-      const data = document.getElementById("data")
-      console.log(data.querySelector("span:first-of-type"))
-      this.renderView(data.querySelector("span:first-of-type"))
+      this.renderView(anchor)
     }
   }
 
   renderView(anchor) {
     const oldOffset = anchor?.offsetTop
     const bytes = []
+    console.log(this.view.byteLength)
     // to avoid locking up the browser on large files, we view a window of 2kb at a time.
-    // TODO: but this window ought to move around as we scroll
     for (let i = this.windowMin * 1024; i < Math.min(this.view.byteLength, this.windowMax * 1024); i++) {
       bytes.push(html`<span 
         key=${i}
         id=${i.toString(16)}
+        data-boundary=${i == 0 ? "first" : i == this.view.byteLength - 1 ? "last" : null}
         class="byte">${this.view.getUint8(i).toString(16).padStart(2, '0')}</span>`)
     }
     this.setState({bytes}, () => {
@@ -75,7 +81,7 @@ class App extends Component {
       return html`<div data-state="loaded">
           <pre ref=${this.data} id="data">
           ${state.bytes}
-          <${Outlines} containerElt=${this.data.current}/>
+          <${Outlines} elfData=${this.elfData} containerElt=${this.data.current}/>
           </pre>
         </div>`
     } else if (state.bytes) {

@@ -15,7 +15,9 @@ body {
 
 pre {
   margin: 0px;
+  row-gap:20px;
   display:grid;
+  font-size:14px;
   justify-content:center;
 }
 

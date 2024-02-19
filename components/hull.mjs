@@ -3,8 +3,19 @@ import { render, Component } from 'https://unpkg.com/preact@latest?module'
 
 export default class Outlines extends Component {
   render(props) {
+    console.log(props.elfData)
+    // Note: the ELF header ends at offset 0x40/0x34, but the end has no width, so the last byte of the elf header is 0x3f/0x33
+    const programHeaderEntries = []
+    for (let i = 0; i < props.elfData.e_phnum; i++) {
+      const start = props.elfData.e_phoff + (props.elfData.e_phentsize * i)
+      programHeaderEntries.push(html`<${Outline} title="ph${i}" start=${start} end=${start + props.elfData.e_phentsize - 1} containerElt=${props.containerElt}/>`)
+    }
+
     return html`<svg>
-      <${Outline} title=${"ELF headers"} start=${0x0} end=${0x34} containerElt=${props.containerElt} />
+      <${Outline} title=${"ELF header"} start=${0x0} end=${props.elfData.is64Bit ? 0x3f : 0x33} containerElt=${props.containerElt} />
+      <${Outline} title=${"Program header"} start=${props.elfData.e_phoff} end=${props.elfData.e_phoff + (props.elfData.e_phentsize * props.elfData.e_phnum) - 1} containerElt=${props.containerElt} />
+      ${programHeaderEntries}
+      <${Outline} title=${"Section header"} start=${props.elfData.e_shoff} end=${props.elfData.e_shoff + (props.elfData.e_shentsize * props.elfData.e_shnum) - 1} containerElt=${props.containerElt} />
     </svg>`
   }
 }
@@ -81,7 +92,7 @@ class Outline extends Component {
     }
     return html`
       <path fill="transparent" stroke="black" d="M ${v1.x} ${v1.y} H ${v2.x} V ${v3.y} H ${v4.x} V ${v5.y} H ${v6.x} V ${v7.y} H ${v8.x} V ${v1.y}"/>
-      <foreignObject x=${v1.x + 5} y=${v1.y - 8} height="1em" width="200"><span style="background:white">${props.title}</span></text>
+      <foreignObject x=${v1.x + 5} y=${v1.y - 10} height="1.2em" width="200"><span style="background:white;font-size:10px">${props.title}</span></text>
     `
   }
 }
