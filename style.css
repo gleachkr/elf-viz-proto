@@ -2,7 +2,7 @@ body, html {
   padding: 0px;
   margin: 0px;
   min-height:100vh;
-  --grid-unit:20px;
+  --grid-unit:30px;
 }
 
 body {
@@ -15,7 +15,6 @@ body {
 
 pre {
   margin: 0px;
-  row-gap:20px;
   display:grid;
   font-size:14px;
   justify-content:center;
@@ -37,7 +36,6 @@ div[data-state=loaded] > pre {
   overflow:visible;
   position:relative;
   width:fit-content;
-  display:grid;
   grid-template-columns: repeat(7,2em) 3em repeat(8,2em);
   grid-auto-rows:var(--grid-unit);
 }

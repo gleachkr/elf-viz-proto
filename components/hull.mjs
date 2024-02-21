@@ -8,14 +8,15 @@ export default class Outlines extends Component {
     const programHeaderEntries = []
     for (let i = 0; i < props.elfData.e_phnum; i++) {
       const start = props.elfData.e_phoff + (props.elfData.e_phentsize * i)
-      programHeaderEntries.push(html`<${Outline} title="ph${i}" start=${start} end=${start + props.elfData.e_phentsize - 1} containerElt=${props.containerElt}/>`)
+      const left = i % 2 === 0
+      programHeaderEntries.push(html`<${Outline} left=${left} title="ph${i}" start=${start} end=${start + props.elfData.e_phentsize - 1} containerElt=${props.containerElt}/>`)
     }
 
     return html`<svg>
-      <${Outline} title=${"ELF header"} start=${0x0} end=${props.elfData.is64Bit ? 0x3f : 0x33} containerElt=${props.containerElt} />
-      <${Outline} title=${"Program header"} start=${props.elfData.e_phoff} end=${props.elfData.e_phoff + (props.elfData.e_phentsize * props.elfData.e_phnum) - 1} containerElt=${props.containerElt} />
+      <${Outline} title=${"ELF header"} depth=${1} start=${0x0} end=${props.elfData.is64Bit ? 0x3f : 0x33} containerElt=${props.containerElt} />
+      <${Outline} title=${"Program header"} depth=${1} start=${props.elfData.e_phoff} end=${props.elfData.e_phoff + (props.elfData.e_phentsize * props.elfData.e_phnum) - 1} containerElt=${props.containerElt} />
       ${programHeaderEntries}
-      <${Outline} title=${"Section header"} start=${props.elfData.e_shoff} end=${props.elfData.e_shoff + (props.elfData.e_shentsize * props.elfData.e_shnum) - 1} containerElt=${props.containerElt} />
+      <${Outline} title=${"Section header"} depth=${1} start=${props.elfData.e_shoff} end=${props.elfData.e_shoff + (props.elfData.e_shentsize * props.elfData.e_shnum) - 1} containerElt=${props.containerElt} />
     </svg>`
   }
 }
@@ -41,6 +42,7 @@ class Outline extends Component {
 
   constructor() {
     super()
+    this.state = { active: false }
     this.startInView = false;
     this.endInView = false;
   }
@@ -59,7 +61,7 @@ class Outline extends Component {
     this.endInView = !!document.getElementById(this.props.end.toString(16))
   }
 
-  render(props) {
+  render(props, state) {
     const el1 = document.getElementById(props.start.toString(16))
     const el2 = document.getElementById(props.end.toString(16))
     if (!el1 || !el2) return
@@ -73,10 +75,10 @@ class Outline extends Component {
 
     const v1 = { x: rect1.x, y: rect1.y }
     const v2 = { y: rect1.y }
-    const v3 = { y: rect2.y }
-    const v4 = { x: rect2.right, y: rect2.y}
-    const v5 = { x: rect2.right, y: rect2.bottom }
-    const v6 = { y: rect2.bottom}
+    const v3 = { y: rect2.y - 5 }
+    const v4 = { x: rect2.right, y: rect2.y - 5 }
+    const v5 = { x: rect2.right, y: rect2.bottom - 5 }
+    const v6 = { y: rect2.bottom - 5 }
     const v7 = { y: rect1.bottom }
     const v8 = { x: rect1.x, y: rect1.bottom }
     if (rect1.top == rect2.top) {
@@ -91,8 +93,25 @@ class Outline extends Component {
       v7.x = 0
     }
     return html`
-      <path fill="transparent" stroke="black" d="M ${v1.x} ${v1.y} H ${v2.x} V ${v3.y} H ${v4.x} V ${v5.y} H ${v6.x} V ${v7.y} H ${v8.x} V ${v1.y}"/>
-      <foreignObject x=${v1.x + 5} y=${v1.y - 10} height="1.2em" width="200"><span style="background:white;font-size:10px">${props.title}</span></text>
+      <${Gutter}
+        onMouseOver=${() => this.setState({ active: true })}
+        onMouseOut=${() => this.setState({ active: false })}
+        depth=${props.depth}
+        container=${container}
+        top=${v1.y}
+        bottom=${v6.y}
+        left=${props.left ?? true}/>
+      <path fill="transparent" stroke=${state.active ? "black" : "transparent"} d="M ${v1.x} ${v1.y} H ${v2.x} V ${v3.y} H ${v4.x} V ${v5.y} H ${v6.x} V ${v7.y} H ${v8.x} V ${v1.y}"/>
+      <foreignObject x=${v1.x + 5} y=${v1.y - 10} height="1.2em" width="200"><span style="display:${state.active ? "inline" : "none"};background:white;font-size:10px">${props.title}</span></text>
     `
+  }
+}
+
+class Gutter extends Component {
+  render(props) {
+    const depthPx = ((props.depth + 1) * 7) || 5
+    const originX = props.left ? -depthPx : props.container.width + depthPx
+    const outerX = props.left ? originX - 5 : originX + 5
+    return html`<path onClick=${props.onClick} onMouseOut=${props.onMouseOut} onMouseOver=${props.onMouseOver} fill="transparent" stroke="black" d="M ${originX} ${props.top} H ${outerX} V ${props.bottom} H ${originX}"/>`
   }
 }
