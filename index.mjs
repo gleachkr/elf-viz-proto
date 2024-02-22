@@ -57,8 +57,8 @@ class App extends Component {
 
   renderView(anchor) {
     const oldOffset = anchor?.offsetTop
+    const oldScroll = window.scrollY
     const bytes = []
-    console.log(this.view.byteLength)
     // to avoid locking up the browser on large files, we view a window of 2kb at a time.
     for (let i = this.windowMin * 1024; i < Math.min(this.view.byteLength, this.windowMax * 1024); i++) {
       bytes.push(html`<span 
@@ -68,11 +68,7 @@ class App extends Component {
         class="byte">${this.view.getUint8(i).toString(16).padStart(2, '0')}</span>`)
     }
     this.setState({bytes}, () => {
-      if (anchor) {
-        console.log("scrollby:", anchor.offsetTop - oldOffset)
-        console.log("scrollY:", window.scrollY)
-      }
-      if (oldOffset !== undefined) window.scroll(0, window.scrollY + (anchor.offsetTop - oldOffset))
+      if (oldOffset !== undefined) window.scroll(0, anchor.offsetTop - oldOffset + oldScroll)
     })
   }
 
