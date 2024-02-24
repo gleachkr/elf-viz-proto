@@ -53,24 +53,40 @@ class Part extends Component {
   render(props, state) {
     const el1 = document.getElementById(props.start.toString(16))
     const el2 = document.getElementById(props.end.toString(16))
-    if (!el1 || !el2) return
+
+    // bail out if first element is later than the last element of the
+    // container, or if last element is before the first element of the
+    // container. XXX: this entangles the DOM too much.
+    if (!el1) {
+      const last = props.containerElt.querySelector("span:last-of-type")
+      if (last.id.toString(16) < props.start.toString(16)) return
+    }
+    if (!el2) {
+      const first = props.containerElt.querySelector("span:first-of-type")
+      if (first.id.toString(16) > props.start.toString(16)) return
+    }
+
     const container = props.containerElt.getBoundingClientRect()
-    const rect1 = el1.getBoundingClientRect()
-    const rect2 = el2.getBoundingClientRect()
-    rect1.x -= container.x
-    rect1.y -= container.y
-    rect2.x -= container.x
-    rect2.y -= container.y
+    const rect1 = el1?.getBoundingClientRect()
+    if (rect1) {
+      rect1.x -= container.x
+      rect1.y -= container.y
+    }
+    const rect2 = el2?.getBoundingClientRect()
+    if (rect2) {
+      rect2.x -= container.x
+      rect2.y -= container.y
+    }
     return html`
       <${Gutter}
         onMouseOver=${() => this.setState({ active: true })}
         onMouseOut=${() => this.setState({ active: false })}
         depth=${props.depth}
         container=${container}
-        top=${rect1.y}
-        bottom=${rect2.bottom - 5}
+        top=${el1 && rect1.y}
+        bottom=${el2 && rect2.bottom - 5}
         left=${props.left ?? true}/>
-      <${Outline} title=${props.title} active=${state.active} container=${container} rect1=${rect1} rect2=${rect2}/>`
+      ${el1 && el2 && html`<${Outline} title=${props.title} active=${state.active} container=${container} rect1=${rect1} rect2=${rect2}/>`}`
   }
 
 }
@@ -97,8 +113,10 @@ class Outline extends Component {
   render(props) {
 
     const container = props.container
-    const rect1 = props.rect1
-    const rect2 = props.rect2
+    const ymin = 0
+    const ymax = document.documentElement.scrollHeight
+    const rect1 = props.rect1 || new DOMRect(0, ymin, container.width, 0)
+    const rect2 = props.rect2 || new DOMRect(0, ymax, container.width, 0)
 
     const v1 = { x: rect1.x, y: rect1.y }
     const v2 = { y: rect1.y }
@@ -139,9 +157,18 @@ class Outline extends Component {
 
 class Gutter extends Component {
   render(props) {
+    if (!props.bottom && !props.top) return
     const depthPx = ((props.depth + 1) * 7) || 5
     const originX = props.left ? -depthPx : props.container.width + depthPx
     const outerX = props.left ? originX - 5 : originX + 5
-    return html`<path onClick=${props.onClick} onMouseOut=${props.onMouseOut} onMouseOver=${props.onMouseOver} fill="transparent" stroke="black" d="M ${originX} ${props.top} H ${outerX} V ${props.bottom} H ${originX}"/>`
+    const ymin = props.top || 0
+    const ymax = props.bottom || document.documentElement.scrollHeight
+    return html`<path 
+      onClick=${props.onClick} 
+      onMouseOut=${props.onMouseOut} 
+      onMouseOver=${props.onMouseOver} 
+      fill="transparent" 
+      stroke="black"
+      d="M ${originX} ${ymin} H ${outerX} V ${ymax} H ${originX}"/>`
   }
 }
