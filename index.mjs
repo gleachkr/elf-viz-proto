@@ -1,7 +1,7 @@
 import { html } from 'https://unpkg.com/htm/preact/index.module.js?module'
 import { render, Component, createRef } from 'https://unpkg.com/preact@latest?module'
-import Parts from './components/part.mjs'
-import { makeElfData } from './util/elfdata.mjs'
+import Part from './components/part.mjs'
+import { makeElfData, makePHData } from './util/elfdata.mjs'
 
 class App extends Component {
 
@@ -20,6 +20,10 @@ class App extends Component {
     this.buffer = buffer
     this.view = new DataView(this.buffer)
     this.elfData = makeElfData(this.view)
+
+    // Note: the ELF header ends at offset 0x40/0x34, but the end has no width,
+    // so the last byte of the elf header is 0x3f/0x33
+
     this.renderView()
   }
 
@@ -60,14 +64,50 @@ class App extends Component {
   }
 
   render(_props, state) {
+    const programHeaderEntries = []
+    const sectionHeaderEntries = []
+
     if (state.bytes) {
       if (!this.data.current) setTimeout(() => this.forceUpdate(), 100)
+      else {
+
+        for (let i = 0; i < this.elfData.e_phnum; i++) {
+          const start = this.elfData.e_phoff + (this.elfData.e_phentsize * i)
+          const left = i % 2 === 0
+          programHeaderEntries.push(html`<${Part} 
+            left=${left} 
+            title="ph${i}"
+            key="ph${i}"
+            start=${start} 
+            end=${start + this.elfData.e_phentsize - 1} 
+            containerRef=${this.data}
+            />`)
+        }
+
+        for (let i = 0; i < this.elfData.e_shnum; i++) {
+          const start = this.elfData.e_shoff + (this.elfData.e_shentsize * i)
+          const left = i % 2 === 0
+          sectionHeaderEntries.push(html`<${Part} 
+            left=${left} 
+            title="sh${i}" 
+            key="sh${i}"
+            start=${start} 
+            end=${start + this.elfData.e_shentsize - 1} 
+            containerRef=${this.data}
+            />`)
+        }
+      }
+
       return html`<div data-state="loaded">
           <pre ref=${this.data} id="data">
           ${state.bytes}
-          ${this.data.current &&
-          html`<${Parts} elfData=${this.elfData} containerElt=${this.data.current}/>`
-          }
+          ${this.data.current && html`<svg>
+              <${Part} title="ELF header" depth=${1} start=${0x0} end=${this.elfData.is64Bit ? 0x3f : 0x33} containerRef=${this.data} />
+              <${Part} title="Program header" depth=${1} start=${this.elfData.e_phoff} end=${this.elfData.e_phoff + (this.elfData.e_phentsize * this.elfData.e_phnum) - 1} containerRef=${this.data} />
+              ${programHeaderEntries}
+              <${Part} title="Section header" depth=${1} start=${this.elfData.e_shoff} end=${this.elfData.e_shoff + (this.elfData.e_shentsize * this.elfData.e_shnum) - 1} containerRef=${this.data} />
+              ${sectionHeaderEntries}
+            </svg>`}
           </pre>
         </div>`
     } else {

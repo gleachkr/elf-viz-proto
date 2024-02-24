@@ -1,34 +1,7 @@
 import { html } from 'https://unpkg.com/htm/preact/index.module.js?module'
-import { render, Component } from 'https://unpkg.com/preact@latest?module'
+import { Component } from 'https://unpkg.com/preact@latest?module'
 
-export default class Parts extends Component {
-  render(props) {
-    // Note: the ELF header ends at offset 0x40/0x34, but the end has no width, so the last byte of the elf header is 0x3f/0x33
-    const programHeaderEntries = []
-    for (let i = 0; i < props.elfData.e_phnum; i++) {
-      const start = props.elfData.e_phoff + (props.elfData.e_phentsize * i)
-      const left = i % 2 === 0
-      programHeaderEntries.push(html`<${Part} left=${left} title="ph${i}" start=${start} end=${start + props.elfData.e_phentsize - 1} containerElt=${props.containerElt}/>`)
-    }
-
-    const sectionHeaderEntries = []
-    for (let i = 0; i < props.elfData.e_shnum; i++) {
-      const start = props.elfData.e_shoff + (props.elfData.e_shentsize * i)
-      const left = i % 2 === 0
-      programHeaderEntries.push(html`<${Part} left=${left} title="sh${i}" start=${start} end=${start + props.elfData.e_phentsize - 1} containerElt=${props.containerElt}/>`)
-    }
-
-    return html`<svg>
-      <${Part} title=${"ELF header"} depth=${1} start=${0x0} end=${props.elfData.is64Bit ? 0x3f : 0x33} containerElt=${props.containerElt} />
-      <${Part} title=${"Program header"} depth=${1} start=${props.elfData.e_phoff} end=${props.elfData.e_phoff + (props.elfData.e_phentsize * props.elfData.e_phnum) - 1} containerElt=${props.containerElt} />
-      ${programHeaderEntries}
-      <${Part} title=${"Section header"} depth=${1} start=${props.elfData.e_shoff} end=${props.elfData.e_shoff + (props.elfData.e_shentsize * props.elfData.e_shnum) - 1} containerElt=${props.containerElt} />
-      ${sectionHeaderEntries}
-    </svg>`
-  }
-}
-
-class Part extends Component {
+export default class Part extends Component {
   constructor() {
     super()
     this.state = { active: false }
@@ -58,15 +31,16 @@ class Part extends Component {
     // container, or if last element is before the first element of the
     // container. XXX: this entangles the DOM too much.
     if (!el1) {
-      const last = props.containerElt.querySelector("span:last-of-type")
-      if (last.id.toString(16) < props.start.toString(16)) return
-    }
-    if (!el2) {
-      const first = props.containerElt.querySelector("span:first-of-type")
-      if (first.id.toString(16) > props.start.toString(16)) return
+      const last = props.containerRef.current.querySelector("span:last-of-type")
+      if (parseInt(last.id, 16) < props.start) return
     }
 
-    const container = props.containerElt.getBoundingClientRect()
+    if (!el2) {
+      const first = props.containerRef.current.querySelector("span:first-of-type")
+      if (parseInt(first.id, 16) > props.end) return
+    }
+
+    const container = props.containerRef.current.getBoundingClientRect()
     const rect1 = el1?.getBoundingClientRect()
     if (rect1) {
       rect1.x -= container.x
