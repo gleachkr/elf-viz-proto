@@ -102,10 +102,24 @@ class App extends Component {
           <pre ref=${this.data} id="data">
           ${state.bytes}
           ${this.data.current && html`<svg>
-              <${Part} title="ELF header" depth=${1} start=${0x0} end=${this.elfData.is64Bit ? 0x3f : 0x33} containerRef=${this.data} />
-              <${Part} title="Program header" depth=${1} start=${this.elfData.e_phoff} end=${this.elfData.e_phoff + (this.elfData.e_phentsize * this.elfData.e_phnum) - 1} containerRef=${this.data} />
+              <${Part} 
+                title="ELF header" 
+                depth=${1} 
+                start=${0x0} 
+                end=${this.elfData.is64Bit ? 0x3f : 0x33} 
+                containerRef=${this.data} />
+              <${Part} 
+                title="Program header" 
+                depth=${1} 
+                start=${this.elfData.e_phoff} 
+                end=${this.elfData.e_phoff + (this.elfData.e_phentsize * this.elfData.e_phnum) - 1} 
+                containerRef=${this.data} />
               ${programHeaderEntries}
-              <${Part} title="Section header" depth=${1} start=${this.elfData.e_shoff} end=${this.elfData.e_shoff + (this.elfData.e_shentsize * this.elfData.e_shnum) - 1} containerRef=${this.data} />
+              <${Part} 
+                title="Section header" depth=${1} 
+                start=${this.elfData.e_shoff} 
+                end=${this.elfData.e_shoff + (this.elfData.e_shentsize * this.elfData.e_shnum) - 1} 
+                containerRef=${this.data} />
               ${sectionHeaderEntries}
             </svg>`}
           </pre>
