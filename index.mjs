@@ -20,9 +20,31 @@ class App extends Component {
     this.buffer = buffer
     this.view = new DataView(this.buffer)
     this.elfData = makeElfData(this.view)
+    this.phData = []
 
-    // Note: the ELF header ends at offset 0x40/0x34, but the end has no width,
-    // so the last byte of the elf header is 0x3f/0x33
+    for (let i = 0; i < this.elfData.e_phnum; i++) {
+      const offset = this.elfData.e_phoff + (this.elfData.e_phentsize * i)
+      const phData = makePHData(this.view,offset)
+      phData.number = i
+      this.phData.push(phData)
+    }
+
+    this.phData.sort((a,b) => a.p_offset - b.p_offset)
+
+    const lanes = []
+
+    //this doesn't fully take advantage of left/right alternation...
+    main: for (const phData of this.phData) {
+      for (let idx = 0; idx < lanes.length; idx++) {
+        if (lanes[idx].p_offset + lanes[idx].p_filesz + 8 < phData.p_offset) {
+          phData.depth = idx 
+          lanes[idx] = phData
+          continue main
+        }
+      }
+      phData.depth = lanes.length
+      lanes.push(phData)
+    }
 
     this.renderView()
   }
@@ -65,6 +87,7 @@ class App extends Component {
 
   render(_props, state) {
     const programHeaderEntries = []
+    const segments = []
     const sectionHeaderEntries = []
 
     if (state.bytes) {
@@ -82,7 +105,17 @@ class App extends Component {
             end=${start + this.elfData.e_phentsize - 1} 
             containerRef=${this.data}
             />`)
+          segments.push(html`<${Part}
+            left=${1 - left} 
+            title="segment-${this.phData[i].number}"
+            key="seg${this.phData[i].number}"
+            start=${this.phData[i].p_offset}
+            end=${this.phData[i].p_offset + this.phData[i].p_filesz - 1}
+            depth=${2 + this.phData[i].depth } 
+            containerRef=${this.data}
+            />`)
         }
+
 
         for (let i = 0; i < this.elfData.e_shnum; i++) {
           const start = this.elfData.e_shoff + (this.elfData.e_shentsize * i)
@@ -115,6 +148,7 @@ class App extends Component {
                 end=${this.elfData.e_phoff + (this.elfData.e_phentsize * this.elfData.e_phnum) - 1} 
                 containerRef=${this.data} />
               ${programHeaderEntries}
+              ${segments}
               <${Part} 
                 title="Section header" depth=${1} 
                 start=${this.elfData.e_shoff} 
