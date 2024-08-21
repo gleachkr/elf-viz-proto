@@ -31,19 +31,32 @@ class App extends Component {
 
     this.phData.sort((a,b) => a.p_offset - b.p_offset)
 
-    const lanes = []
+    const lanesLeft = []
+    const lanesRight = []
 
-    //this doesn't fully take advantage of left/right alternation...
     main: for (const phData of this.phData) {
-      for (let idx = 0; idx < lanes.length; idx++) {
-        if (lanes[idx].p_offset + lanes[idx].p_filesz + 8 < phData.p_offset) {
+      for (let idx = 0; idx < Math.max(lanesLeft.length, lanesRight.length); idx++) {
+        if (idx < lanesLeft.length &&
+          lanesLeft[idx].p_offset + lanesLeft[idx].p_filesz + 8 < phData.p_offset) {
+          phData.depth = idx
+          phData.left = true
+          lanesLeft[idx] = phData
+          continue main
+        }
+        if (idx < lanesRight.length &&
+          lanesRight[idx].p_offset + lanesRight[idx].p_filesz + 8 < phData.p_offset) {
+
           phData.depth = idx 
-          lanes[idx] = phData
+          phData.left = false
+          lanesRight[idx] = phData
           continue main
         }
       }
-      phData.depth = lanes.length
-      lanes.push(phData)
+      const leastLane = lanesLeft.length < lanesRight.length 
+        ? (phData.left = true, lanesLeft)
+        : (phData.left = false, lanesRight)
+      phData.depth = leastLane.length
+      leastLane.push(phData)
     }
 
     this.renderView()
@@ -106,7 +119,7 @@ class App extends Component {
             containerRef=${this.data}
             />`)
           segments.push(html`<${Part}
-            left=${1 - left} 
+            left=${this.phData[i].left} 
             title="segment-${this.phData[i].number}"
             key="seg${this.phData[i].number}"
             start=${this.phData[i].p_offset}
